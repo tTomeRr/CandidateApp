@@ -1,0 +1,20 @@
+# The number of replicas for the Flask application
+flaskReplicaCount: 1
+
+# The image to pull for our Flask application
+flaskImage:
+  repository: ttomerr/containerapp
+  tag: "1"
+  pullPolicy: IfNotPresent
+
+# The namespace for our cluster
+flaskNamespace: flaskapp-namespace
+
+# MongoDB configuration
+mongodbName: "mongodb"
+mongodbReplicaCount: 3
+mongodbImage:
+  repository: mongo
+  tag: "4.4.28"
+mongodbStorageSize: 1Gi
+
