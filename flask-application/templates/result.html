@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Results - DogsVsCats</title>
+    <style>
+        .simple-bar-chart {
+            --line-count: 20;
+            --line-color: currentcolor;
+            --line-opacity: 0.25;
+            --item-gap: 2%;
+            --item-default-color: #060606;
+            height: 20rem;
+            display: grid;
+            grid-auto-flow: column;
+            gap: var(--item-gap);
+            align-items: end;
+            padding-inline: var(--item-gap);
+            --padding-block: 1.5rem;
+            padding-block: var(--padding-block);
+            position: relative;
+            isolation: isolate;
+            margin-left: auto;
+            margin-right: auto;
+            max-width: 100%;
+            width: 100%;
+        }
+
+        .simple-bar-chart::after {
+            content: "";
+            position: absolute;
+            inset: var(--padding-block) 0;
+            z-index: -1;
+            --line-width: 1px;
+            --line-spacing: calc(100% / var(--line-count));
+            background-image: repeating-linear-gradient(to top, transparent 0 calc(var(--line-spacing) - var(--line-width)), var(--line-color) 0 var(--line-spacing));
+            box-shadow: 0 var(--line-width) 0 var(--line-color);
+            opacity: var(--line-opacity);
+        }
+
+        .simple-bar-chart > .item {
+            height: calc(1% * var(--val));
+            background-color: var(--clr, var(--item-default-color));
+            position: relative;
+            animation: item-height 1s ease forwards;
+        }
+
+        @keyframes item-height { from { height: 0 } }
+
+        .simple-bar-chart > .item > * {
+            position: absolute;
+            text-align: center;
+        }
+
+        .simple-bar-chart > .item > .label { inset: 100% 0 auto 0; }
+        .simple-bar-chart > .item > .value { inset: auto 0 100% 0; }
+
+        body {
+            margin: 0;
+            text-align: center;
+            font-size: 35px;
+            justify-content: center;
+            align-items: center;
+            height: 100%;
+            font-family: Arial, sans-serif;
+        }
+
+        .chart-container {
+            display: flex;
+            flex-direction: column;
+            justify-content: flex-start;
+            align-items: center;
+            max-width: 600px;
+            margin: 20rem auto;
+            padding: 2rem;
+            min-height: 30rem;
+            box-sizing: border-box;
+        }
+
+        .half {
+            position: fixed;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+        }
+
+        #cat {
+            right: 0;
+            background: url('/static/cat.jpg') no-repeat center center;
+            background-size: cover;
+        }
+
+        #dog {
+            left: 0;
+            background: url('/static/dog.jpg') no-repeat center center;
+            background-size: cover;
+        }
+
+        .center-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40%;
+            height: 20%;
+            background: rgba(255, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 10px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 28px;
+            cursor: pointer;
+            margin: 2rem;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="dog" class="half"></div>
+    <div id="cat" class="half"></div>
+
+
+    <div class="chart-container">
+        <div class="simple-bar-chart">
+            <div class="item" style="--clr: #C255A2; --val: {{ survey_results['dogs'] * 3 }}">
+                <div class="label">Dogs</div>
+                <div class="value">{{ survey_results['dogs'] }}</div>
+            </div>
+            <div class="item" style="--clr: #FCB72A; --val: {{ survey_results['cats'] * 3 }}">
+                <div class="label">Cats</div>
+                <div class="value">{{ survey_results['cats'] }}</div>
+            </div>
+        </div>
+        <button type="button" onclick="window.location.href='/'">Go Back</button>
+    </div>
+</body>
+</html>

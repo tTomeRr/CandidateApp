@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DogsVsCats</title>
+    <style>
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: Arial, sans-serif;
+        }
+
+        .half {
+            position: fixed;
+            width: 50%;
+            height: 100%;
+            overflow: hidden;
+            top: 0;
+        }
+
+        #cat {
+            right: 0;
+            background: url('/static/cat.jpg') no-repeat center center;
+            background-size: cover;
+        }
+
+        #dog {
+            left: 0;
+            background: url('/static/dog.jpg') no-repeat center center;
+            background-size: cover;
+        }
+
+        .center-box {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 40%;
+            height: 20%;
+            background: rgba(255, 255, 255, 0.5);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            border-radius: 10px;
+        }
+
+        .button-container {
+            display: flex;
+            justify-content: center;
+             gap: 10px;
+        }
+
+        button {
+            padding: 15px 30px;
+            font-size: 28px;
+            cursor: pointer;
+        }
+
+        .center-box h2 {
+            font-size: 40px;
+
+        }
+    </style>
+</head>
+<body>
+    <div id="dog" class="half"></div>
+    <div id="cat" class="half"></div>
+    <div class="center-box">
+        <h2>Who is the better animal?</h2>
+        <div class="button-container">
+            <form action="/result" method="post" id="voteForm">
+                <input type="hidden" name="choice" id="choice" value="" />
+                <button type="button" onclick="vote('dog');">Dog</button>
+                <button type="button" onclick="vote('cat');">Cat</button>
+            </form>
+        </div>
+
+        <script>
+        function vote(animal) {
+            document.getElementById('choice').value = animal;
+            document.getElementById('voteForm').submit();
+        }
+        </script>
+    </div>
+</body>
+</html>
+
