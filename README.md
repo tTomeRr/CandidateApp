@@ -1,6 +1,6 @@
 # Flask-based Survey Application on Kubernetes
 
-This project deploys a Flask-based Application on Kubernetes using Kind. The application asks users for which animal they like more (a dog or a cat) and display the results in a graph. The deployment uses Bash scripting for logs, error handling and updating the Kubernetes cluster easily.
+This mini-project deploys a Flask-based Application on Kubernetes using Kind. The application asks users for which animal they like more (a dog or a cat) and display the results in a graph. The deployment uses Bash scripting for logs, error handling and updating the Kubernetes cluster easily.
 
 ## Prerequisites
 
