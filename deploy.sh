@@ -3,8 +3,10 @@
 # Define basic application arguments
 flask_replica_count=1
 mongodb_replica_count=1
-flask_cluster="flask-cluster"
-flask_chart="flask-chart"
+cluster_config_file="cluster-config"
+cluster_name="dogsvscats-cluster"
+app_chart_name="flask-mongodb-chart"
+app_namespace="application-namespace"
 
 time=$(date "+%d.%m.%y-%H:%M:%S")
 errorfile="error_$time.log"
@@ -27,7 +29,7 @@ function error_logging(){
 
 # Display help information for the script.
 function display_help(){
-	echo "CANDIDATEAPP"
+	echo "DogsVsCats"
 	echo "  $0 is a script allowing you to download a simple Flask application, that will run on Kubernetes with Nginx."
 	echo ""
 
@@ -40,7 +42,7 @@ function display_help(){
 	echo ""
 
 	echo "PREREQUISITES"
-	echo "  1.You must run the script in the CandidateApp folder."
+	echo "  1.You must run the script in the DogsVsCats folder."
 	echo "  2.You must run the script with root user."
 	echo "  3.You must have Docker installed."
 	echo "  4.You must have Kind installed."
@@ -100,10 +102,10 @@ function helm_prerequisites() {
     fi
 }
 
-# Check if the script is run from the CandidateApp directory.
+# Check if the script is run from the DogsVsCats directory.
 function folder_prerequisites() {
-    if [[ $(basename $(pwd)) != "CandidateApp" ]]; then
-        echo -e "${RED}ERROR: Please run this script from the CandidateApp directory.${NC}"
+    if [[ $(basename $(pwd)) != "DogsVsCats" ]]; then
+        echo -e "${RED}ERROR: Please run this script from the DogsVsCats directory.${NC}"
         exit 1
     fi
 }
@@ -133,7 +135,7 @@ function check_helm_chart_dir_exist() {
 
 # Check if flask cluster exists.
 function check_cluster_exists() {
-	if [ -z "$(kind get clusters | grep $flask_cluster)" ]; then
+	if [ -z "$(kind get clusters | grep $cluster_name)" ]; then
 		return 1 # == false
 	else
 		return 0 # == true
@@ -152,12 +154,12 @@ function check_file_exists() {
 # Prepare the Kubernetes cluster for deployment.
 function prepare_cluster() {
 	if ! check_cluster_exists; then
-		if ! check_file_exists "$flask_cluster.yaml"; then
-			echo -e "${RED}ERROR: '$flask_cluster.yaml' does not exist.${NC}"
+		if ! check_file_exists "$cluster_config_file.yaml"; then
+			echo -e "${RED}ERROR: '$cluster_config_file.yaml' does not exist.${NC}"
 			exit 1
 		else
 			echo "Creating Cluster..."
-			kind create cluster --config="$flask_cluster.yaml" 
+			kind create cluster --config="$cluster_config_file.yaml" 
 			echo -e "${GREEN}Finished creating Cluster...${NC}"
 		fi
 	fi
@@ -165,15 +167,9 @@ function prepare_cluster() {
 
 # Prepare the Helm charts for deployment.
 function prepare_helm_chart() {
-	if ! check_helm_chart_dir_exist "flask-app-chart"; then
-		echo -e "${RED}ERROR: flask-app-chart does not exist.${NC}"
+	if ! check_helm_chart_dir_exist $app_chart_name; then
+		echo -e "${RED}ERROR: $app_chart_name does not exist.${NC}"
 		exit 1
-	fi
-
-	if ! check_helm_chart_dir_exist "nginx-ingress"; then
-		echo "Pulling Nginx ingress Helm chart..."
-		helm pull oci://ghcr.io/nginxinc/charts/nginx-ingress --untar --version 1.1.3
-		echo -e "${GREEN}Finished pulling Nginx ingress Helm chart...${NC}"
 	fi
 }
 
@@ -214,17 +210,17 @@ function wait_for_pods_ready() {
 # Apply necessary YAML files for the deployment.
 function apply_yamls(){
 	echo "Applying necessary YAML files..."
-	kubectl apply -f nginx-ingress/crds/
+	kubectl apply -f https://raw.githubusercontent.com/nginxinc/kubernetes-ingress/v3.5.0/deploy/crds.yaml
 
-	if [ -e ip-pool.yaml ]; then
-		kubectl apply -f ip-pool.yaml
+	if [ -e metallb/ip-pool.yaml ]; then
+		kubectl apply -f metallb/ip-pool.yaml
 	else
 		echo -e "${RED}Missing ip-pool.yaml file${NC}"
 		exit 1
 	fi
 
-	if [ -e l2advertisement.yaml ]; then
-		kubectl apply -f l2advertisement.yaml
+	if [ -e metallb/l2advertisement.yaml ]; then
+		kubectl apply -f metallb/l2advertisement.yaml
 	else
 		echo -e "${RED}Missing l2advertisement.yaml file${NC}"
 		exit 1
@@ -236,7 +232,7 @@ function apply_yamls(){
 function output_url(){
 
 	ip_address=$(kubectl get svc nginx-ingress-controller -o=jsonpath='{.status.loadBalancer.ingress[0].ip}')
-	url=$(cat ./flask-app-chart/templates/flask-deployment.yaml | grep host | awk '{print $NF}')
+	url=$(cat ./$app_chart_name/templates/flask-deployment.yaml | grep host | awk '{print $NF}')
 
 	if ! grep -q "$ip_address.*$url" /etc/hosts; then
 		echo "$ip_address $url" >> /etc/hosts
@@ -250,7 +246,7 @@ function output_url(){
 
 # Check if the website is ready to be accessed.
 function check_site_ready() {
-	url=$(awk '/host:/ {print $NF}' ./flask-app-chart/templates/flask-deployment.yaml)
+	url=$(awk '/host:/ {print $NF}' ./$app_chart_name/templates/flask-deployment.yaml)
 	echo "Waiting for site to be ready..."
 	timeout=30 # each timeout interval is 3 seconds, 30 in this value equals 90 seconds.
 
@@ -262,7 +258,7 @@ function check_site_ready() {
 			echo -e "${RED}ERROR: could not access site. Status code: '$http_status'. Pod output will be in the error log file. ${NC}" | tee -a error/$errorfile  
 
 			# Sending log messages of the mongodb and flask pods to the error file
-			kubectl logs -n=flaskapp-namespace $(kubectl get pods -n=flaskapp-namespace -o jsonpath='{.items[0].metadata.name}') >> error/$errorfile
+			kubectl logs -n=$app_namespace $(kubectl get pods -n=$app_namespace -o jsonpath='{.items[0].metadata.name}') >> error/$errorfile
 			kubectl logs $(kubectl get pods -o jsonpath='{.items[0].metadata.name}') >> error/$errorfile
 			exit 1
 		else
@@ -279,12 +275,21 @@ function install(){
 	check_prerequisites
 	prepare_execution
 
-	echo "Installing $flask_chart..."
-	if ! check_helm_release_exists "$flask_chart"; then
-		helm install $flask_chart ./flask-app-chart --set mongodbReplicaCount=$mongodb_replica_count --set flaskReplicaCount=$flask_replica_count
-		echo -e "${GREEN}Finished installing $flask_chart${NC}"
+	echo "Installing $app_chart_name..."
+	if ! check_helm_release_exists "$app_chart_name"; then
+		helm install $app_chart_name ./$app_chart_name --set mongodbReplicaCount=$mongodb_replica_count --set flaskReplicaCount=$flask_replica_count
+		echo -e "${GREEN}Finished installing $app_chart_name${NC}"
 	else
-		echo -e "${ORANGE}$flask_chart is already installed. Skipping installation.${NC}"
+		echo -e "${ORANGE}$app_chart_name is already installed. Skipping installation.${NC}"
+	fi
+	
+	
+	echo "Installing Metallb..."
+	if [ -e metallb/metallb.yaml ]; then
+		kubectl apply -f metallb/metallb.yaml
+	else
+		echo -e "${RED}Missing metallb.yaml file${NC}"
+		exit 1
 	fi
 
 	# Waiting for pods to be ready and applying neccesary YAML files before installing the Nginx ingress Helm chart.
@@ -307,11 +312,11 @@ function install(){
 function uninstall(){
 	check_prerequisites
 	if ! check_cluster_exists; then
-		echo -e "${RED}ERROR: $flask_cluster does not exist, nothing to do.${NC}"
+		echo -e "${RED}ERROR: $cluster_config_file does not exist, nothing to do.${NC}"
 		exit 1
 	else
 		echo "Deleting Cluster..."
-		kind delete clusters $flask_cluster
+		kind delete clusters $cluster_name
 		echo -e "${GREEN}Finished deleting Cluster...${NC}"
 		exit 0
 	fi
@@ -321,18 +326,18 @@ function uninstall(){
 function upgrade_flask() {
 	flask_replica_count_update=$1
 
-	current_flask_replicas=$(helm get values "$flask_chart" --all | grep flaskReplicaCount: | awk '{print $NF}')
+	current_flask_replicas=$(helm get values "$app_chart_name" --all | grep flaskReplicaCount: | awk '{print $NF}')
 
 	echo "Upgrading Flask replicas..."
 
-	if ! check_helm_release_exists "$flask_chart"; then
-		echo -e "${RED}ERROR: $flask_chart has not been found.${NC}"
+	if ! check_helm_release_exists "$app_chart_name"; then
+		echo -e "${RED}ERROR: $app_chart_name has not been found.${NC}"
 		exit 1
 	elif [ "$current_flask_replicas" -eq "$flask_replica_count_update" ]; then
 		echo -e "${ORANGE}Nothing to upgrade for Flask.${NC}"
 	else
 		echo "Upgrading Flask replicas..."
-		helm upgrade "$flask_chart" ./flask-app-chart --set flaskReplicaCount="$flask_replica_count_update" > /dev/null 2>> error/$errorfile
+		helm upgrade "$app_chart_name" ./$app_chart_name --set flaskReplicaCount="$flask_replica_count_update" > /dev/null 2>> error/$errorfile
 		echo -e "${GREEN}Finished upgrading Flask replicas${NC}"
 	fi
 }
@@ -341,18 +346,18 @@ function upgrade_flask() {
 function upgrade_mongo() {
 	mongodb_replica_count_update=$1
 
-	current_mongodb_replicas=$(helm get values "$flask_chart" --all | grep mongodbReplicaCount: | awk '{print $NF}')
+	current_mongodb_replicas=$(helm get values "$app_chart_name" --all | grep mongodbReplicaCount: | awk '{print $NF}')
 
 	echo "Upgrading MongoDB replicas..."
 
-	if ! check_helm_release_exists "$flask_chart"; then
-		echo -e "${RED}ERROR: $flask_chart has not been found.${NC}"
+	if ! check_helm_release_exists "$app_chart_name"; then
+		echo -e "${RED}ERROR: $app_chart_name has not been found.${NC}"
 		exit 1
 	elif [ "$current_mongodb_replicas" -eq "$mongodb_replica_count_update" ]; then
 		echo -e "${ORANGE}Nothing to upgrade for MongoDB.${NC}"
 	else
 		echo "Upgrading MongoDB replicas..."
-		helm upgrade "$flask_chart" ./flask-app-chart --set mongodbReplicaCount="$mongodb_replica_count_update" > /dev/null 2>> error/$errorfile
+		helm upgrade "$app_chart_name" ./$app_chart_name --set mongodbReplicaCount="$mongodb_replica_count_update" > /dev/null 2>> error/$errorfile
 		echo -e "${GREEN}Finished upgrading MongoDB replicas${NC}"
 	fi
 }

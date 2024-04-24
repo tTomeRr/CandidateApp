@@ -25,6 +25,7 @@ Flags:
 EXAMPLE USAGES
 
 # Installing the application-
+chmod a+x
 ./candidateapp -i
 
 # Deleting the application-
