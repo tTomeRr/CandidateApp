@@ -1,6 +1,6 @@
 # Flask-based Survey Application on Kubernetes
 
-This project deploys a Flask-based Survey Application on Kubernetes using Kind. The application survey users for questions on a political candidate (e.g., Trump vs. Biden) and display the results in a dashboard. The deployment uses Bash scripting for logs, error handling and updating the Kubernetes cluster easily.
+This project deploys a Flask-based Application on Kubernetes using Kind. The application asks users for which animal they like more (a dog or a cat) and display the results in a graph. The deployment uses Bash scripting for logs, error handling and updating the Kubernetes cluster easily.
 
 ## Prerequisites
 
@@ -12,7 +12,7 @@ This project deploys a Flask-based Survey Application on Kubernetes using Kind. 
 
 ## Usage
 
-All of the project can be managed by the candidateapp.sh script.
+All of the project can be managed by the deploy.sh script.
 
 Flags:
 - -i Install
@@ -24,15 +24,17 @@ Flags:
 ```bash
 EXAMPLE USAGES
 
-# Installing the application-
+# First, give the script executable permissions.
 chmod a+x
-./candidateapp -i
+
+# Installing the application-
+./deploy.sh -i
 
 # Deleting the application-
-./candidateapp -i -d
+./deploy.sh -i -d
 
 # Upgrading Flask and Mongodb replicas to 3 and 3-
- ./candidateapp -i -f 3 -m 3
+ ./deploy.sh -i -f 3 -m 3
 ```
 
 ## Contributing
