@@ -38,6 +38,12 @@ chmod a+x
  ./deploy.sh -i -f 3 -m 3
 ```
 
+## Screenshots
+![image](https://github.com/tTomeRr/DogsVsCats/assets/129614080/a0a41c23-1f11-48e9-ba76-e20a9aec42c9)
+![image](https://github.com/tTomeRr/DogsVsCats/assets/129614080/e8678f3c-fcae-44f9-ae3b-c8ad61fbe854)
+
+
+
 ## Contributing
 
 Contributions are welcome! Please feel free to submit pull requests or open issues for any improvements or bug fixes.
